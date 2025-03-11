@@ -1,7 +1,7 @@
 import re
 
 
-re_closing_tag = r"</([a-z][^\s=/\\]*)\s*>"
+re_closing_tag = r"</([a-z][^\s=\/\\\>]*)\s*>"
 re_comment = r"<!--.*?-->"
 re_tag = (
     r"""(<([a-z][^\s=/\\]*)(\s*[^\s=]+(\s*=\s*(\"|\').*?\5))*\s*(\/?)>)"""
@@ -10,8 +10,8 @@ re_tag = (
 )
 
 
-def get_end_index(file_content, start, elements=None):
-    if elements is not None and not elements:
+def get_end_index(file_content, start, elements=None, stop_at_close_error=False):
+    if elements is not None and len(elements) == 0 and not stop_at_close_error:
         return start
 
     elements = elements or ()
@@ -24,7 +24,7 @@ def get_end_index(file_content, start, elements=None):
 
     is_comment = el.group(9)
     if is_comment:
-        return get_end_index(file_content, start, elements)
+        return get_end_index(file_content, start, elements, stop_at_close_error)
 
     is_closing_tag = el.group(7)
     if is_closing_tag:
@@ -35,7 +35,9 @@ def get_end_index(file_content, start, elements=None):
             ri = -1
         if ri >= 0:
             elements = elements[: -ri - 1]
-        return get_end_index(file_content, start, elements)
+        elif stop_at_close_error:
+            return start
+        return get_end_index(file_content, start, elements, stop_at_close_error)
 
     tag_name = el.group(2)
     is_self_closing = bool(el.group(6))
@@ -44,7 +46,7 @@ def get_end_index(file_content, start, elements=None):
     elif not elements:
         return None
 
-    return get_end_index(file_content, start, elements)
+    return get_end_index(file_content, start, elements, stop_at_close_error)
 
 
 def get_start_index(file_content, end, elements=None):
