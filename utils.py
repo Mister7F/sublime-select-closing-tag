@@ -2,7 +2,7 @@ import re
 
 
 re_closing_tag = r"</([a-z][^\s=\/\\\>]*)\s*>"
-re_comment = r"<!--.*?-->"
+re_comment = r"(<!--.*?-->)|(<\?xml.*?\?>)"
 re_tag = (
     r"""(<([a-z][^\s=/\\]*)(\s*[^\s=]+(\s*=\s*(\"|\').*?\5))*\s*(\/?)>)"""
     + ("|(%s)" % re_closing_tag)
@@ -43,8 +43,6 @@ def get_end_index(file_content, start, elements=None, stop_at_close_error=False)
     is_self_closing = bool(el.group(6))
     if not is_self_closing:
         elements += (tag_name.lower(),)
-    elif not elements:
-        return None
 
     return get_end_index(file_content, start, elements, stop_at_close_error)
 
@@ -119,8 +117,6 @@ if __name__ == "__main__":
     assert get_end_index(data, data.index('<p id="loading-slow"')) == 907
     assert get_end_index(data, data.index('<div id="app">')) == 127
     assert get_end_index(data, data.index("<body")) == 1087
-    assert get_end_index(data, data.index("<br")) is None
-    assert get_end_index(data, data.index('<img src="xxx')) is None
 
     # Test find opening
     idx = get_start_index(data, data.index("</button>") + len("</button>"))
@@ -142,4 +138,17 @@ if __name__ == "__main__":
     assert data[idx:].startswith('<p id="loading-slow">')
     assert idx == 809
 
-    print("OK")
+    data = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <div xml:space="preserve">
+            <t xxx="a" t-inherit="b">
+                <xpath a="c" b="a">
+                    <div s="separator" d="dropdowndivider"/>
+                </xpath>
+            </t>
+        </div>
+    """
+
+    idx = get_end_index(data, data.index('xxx="a"') + 1, stop_at_close_error=True)
+    assert data[idx - len("</t>") :].startswith("</t>")
+    assert idx == 259
