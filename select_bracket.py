@@ -48,7 +48,7 @@ def _select_matching(view, selection):
     view.sel().subtract(selection)
     view.sel().subtract(new_selection)
 
-    if len(set(selection.to_tuple()) & set(new_selection.to_tuple())) == 4:
+    if len(set(selection.to_tuple()) | set(new_selection.to_tuple())) >= 3:
         b = max(selection.to_tuple())
         c = view.substr(sublime.Region(b, b + 1))
         d = view.substr(sublime.Region(b - 1, b))
