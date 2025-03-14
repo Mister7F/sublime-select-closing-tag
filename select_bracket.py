@@ -41,20 +41,33 @@ class CustomExpandSelectionBracketCommand(sublime_plugin.TextCommand):
 re_bracket = r"[\(\)\{\}\[\]]"
 
 
+# a = ({1: [(1 * 2) % 5 + 1] * 3})
+# a = (1 + 1)
+
+
 def _select_matching(view, selection):
+    if abs(selection.a - selection.b) == 1:
+        c = view.substr(selection)
+        cursor = min(selection.to_tuple()) if c in "({[" else max(selection.to_tuple())
+    else:
+        cursor = max(selection.to_tuple())
+    selection = sublime.Region(cursor, cursor)
     view.sel().add(selection)
     view.run_command("move_to", args={"to": "brackets"})
-    new_selection = view.sel()[0]
-    view.sel().subtract(selection)
-    view.sel().subtract(new_selection)
+    new_cursor = view.sel()[0].a
+    view.sel().subtract(view.sel()[0])
 
-    if len(set(selection.to_tuple()) | set(new_selection.to_tuple())) >= 3:
-        b = max(selection.to_tuple())
-        c = view.substr(sublime.Region(b, b + 1))
-        d = view.substr(sublime.Region(b - 1, b))
-        if re.match(re_bracket, c) and not re.match(re_bracket, d):
-            return sublime.Region(new_selection.a - 1, new_selection.b)
-        return sublime.Region(new_selection.a, new_selection.b + 1)
+    if set(selection.to_tuple()) != {new_cursor}:
+        # By default, sublime try to jump outside
+        if new_cursor > cursor:
+            to_check = view.substr(sublime.Region(cursor, cursor + 1))
+        else:
+            to_check = view.substr(sublime.Region(cursor - 1, cursor))
+
+        jump_inside = not re.match(re_bracket, to_check)
+        if (new_cursor > cursor) ^ jump_inside:
+            return sublime.Region(new_cursor - 1, new_cursor)
+        return sublime.Region(new_cursor, new_cursor + 1)
 
     # The command fail, fallback on search
     # TODO: will match brackets inside strings :/
